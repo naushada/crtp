@@ -4,6 +4,8 @@
 #include <iostream>
 #include <variant>
 
+#define FSM_TRANSITION(inst, event, new_state, ...) inst.fsm_transition(event, new_state, ##__VA_ARGS__)
+
 template<typename T>
 struct fsm {
 
@@ -46,7 +48,7 @@ struct onDiscover: fsm<onDiscover> {
     }
 
     int handle_event(evt event) {
-        std::cout << "In onDiscover::rx" << std::endl;
+        std::cout << "In onDiscover::handle_event" << std::endl;
         return(0);
     }
 
@@ -67,7 +69,7 @@ struct onOffer : fsm<onOffer> {
     }
 
     int handle_event(evt event) {
-        std::cout << "In onOffer::rx" << std::endl;
+        std::cout << "In onOffer::handle_event" << std::endl;
         return(0);
     }
 
@@ -77,30 +79,41 @@ struct onOffer : fsm<onOffer> {
     }
 };
 
+using states_t = std::variant<onDiscover, onOffer>;
+
 template<typename... Args>
 struct active_instance {
 
-    int operator()(onDiscover& discover, Args... args) {
+    auto operator()(onDiscover& discover, Args... args) {
         std::cout << "current state is onDiscover " << std::endl;
-        return(0);
+        onOffer offer;
+        states_t st;
+        /* feed to fsm now */
+        st = FSM_TRANSITION(discover, onDiscover::evt1, offer, args...);
+        return(st);
     }
-
-    int operator()(onOffer& offer, Args... args) {
+    
+    auto operator()(onOffer& offer, Args... args) {
         std::cout << "current state is onOffer " << std::endl;
-        return(0);
+        onDiscover discover;
+        states_t st;
+        /* feed to fsm now */
+        st = FSM_TRANSITION(offer, onOffer::evt1, discover, args...);
+        return(st);
     }
 
     template<typename State>
-    int operator()(State& defaultSt, Args... args) {
+    auto operator()(State& defaultSt, Args... args) {
         std::cout << "current state is defaultSt " << std::endl;
-        return(0);
+        State st;
+        return(st);
     }
 };
 
-#define FSM_TRANSITION(inst, event, new_state, ...) inst.fsm_transition(event, new_state, ##__VA_ARGS__)
+
 
 struct fsm_user {
-    std::variant<onDiscover, onOffer> m_states;
+     states_t m_states;
 
     fsm_user() {
         m_states = FSM_TRANSITION(std::get<onDiscover>(m_states), onDiscover::evt1, std::get<onDiscover>(m_states));
@@ -111,7 +124,7 @@ struct fsm_user {
         int x = 12;
         std::cout << "fsm_user::process_request " << std::endl;
         /* Findout which instance is active in std::variant */
-        std::visit(active_instance(), m_states);
+        m_states = std::visit(active_instance(), m_states);
         
         return(0);
     }
@@ -132,6 +145,7 @@ int main() {
 
     std::cout << "instantiating fsm_user " << std::endl;
     fsm_user fsmUser;
+    fsmUser.process_request();
     fsmUser.process_request();
     //offerSt.setState(discoverSt);
 }
