@@ -78,14 +78,13 @@ struct onOffer : fsm<onOffer> {
 };
 
 template<typename... Args>
-struct rx {
+struct active_instance {
 
     int operator()(onDiscover& discover, Args... args) {
         std::cout << "current state is onDiscover " << std::endl;
         return(0);
     }
 
-    
     int operator()(onOffer& offer, Args... args) {
         std::cout << "current state is onOffer " << std::endl;
         return(0);
@@ -112,7 +111,7 @@ struct fsm_user {
         int x = 12;
         std::cout << "fsm_user::process_request " << std::endl;
         /* Findout which instance is active in std::variant */
-        std::visit(rx(), m_states);
+        std::visit(active_instance(), m_states);
         
         return(0);
     }
@@ -125,9 +124,9 @@ int main() {
     //auto new_state = discoverSt.set_state(offerSt);
     auto new_state = discoverSt.fsm_transition(onDiscover::evt1, offerSt);
     /* start receiving on current state */
-    //new_state.rx();
+    //new_state.handle_event();
 
-	//new_state.fsm_transition(onOffer::evt1, discoverSt);
+    //new_state.fsm_transition(onOffer::evt1, discoverSt);
     FSM_TRANSITION(new_state, onOffer::evt1, discoverSt);
     FSM_TRANSITION(new_state, onOffer::evt1, discoverSt, arg1_val);
 
