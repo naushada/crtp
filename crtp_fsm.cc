@@ -77,6 +77,27 @@ struct onOffer : fsm<onOffer> {
     }
 };
 
+template<typename... Args>
+struct rx {
+
+    int operator()(onDiscover& discover, Args... args) {
+        std::cout << "current state is onDiscover " << std::endl;
+        return(0);
+    }
+
+    
+    int operator()(onOffer& offer, Args... args) {
+        std::cout << "current state is onOffer " << std::endl;
+        return(0);
+    }
+
+    template<typename State>
+    int operator()(State& defaultSt, Args... args) {
+        std::cout << "current state is defaultSt " << std::endl;
+        return(0);
+    }
+};
+
 #define FSM_TRANSITION(inst, event, new_state, ...) inst.fsm_transition(event, new_state, ##__VA_ARGS__)
 
 struct fsm_user {
@@ -85,7 +106,16 @@ struct fsm_user {
     fsm_user() {
         m_states = FSM_TRANSITION(std::get<onDiscover>(m_states), onDiscover::evt1, std::get<onDiscover>(m_states));
         std::get<onDiscover>(m_states).onEntry();
-    }    
+    }
+
+    int process_request() {
+        int x = 12;
+        std::cout << "fsm_user::process_request " << std::endl;
+        /* Findout which instance is active in std::variant */
+        std::visit(rx(), m_states);
+        
+        return(0);
+    }
 };
 
 int main() {
@@ -103,7 +133,7 @@ int main() {
 
     std::cout << "instantiating fsm_user " << std::endl;
     fsm_user fsmUser;
-
+    fsmUser.process_request();
     //offerSt.setState(discoverSt);
 }
 
